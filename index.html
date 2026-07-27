@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>壓力單位換算器</title>
+    <meta name="theme-color" content="#0d1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --accent-color: #2f81f7;
+            --accent-active: #58a6ff;
+            --text-main: #f0f6fc;
+            --text-sub: #8b949e;
+            --num-bg: #21262d;
+            --num-active: #363b42;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 16px env(safe-area-inset-bottom) 16px;
+            overflow-x: hidden;
+        }
+
+        /* 標頭與模式切換 */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .title {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--accent-active);
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--card-bg);
+            border-radius: 8px;
+            padding: 3px;
+            border: 1px solid var(--border-color);
+        }
+
+        .mode-btn {
+            padding: 6px 14px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--accent-color);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(47, 129, 247, 0.4);
+        }
+
+        /* 輸入與單位選擇區 */
+        .input-section {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+            margin: 14px 0 10px 0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            flex-shrink: 0;
+        }
+
+        .section-label {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .unit-selector {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: none;
+        }
+
+        .unit-selector::-webkit-scrollbar {
+            display: none;
+        }
+
+        .unit-chip {
+            padding: 10px 18px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            background: var(--num-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-sub);
+            border-radius: 24px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .unit-chip.active {
+            background: var(--accent-color);
+            color: #ffffff;
+            border-color: var(--accent-active);
+            box-shadow: 0 0 10px rgba(47, 129, 247, 0.5);
+        }
+
+        /* 觸發原生鍵盤的高對比輸入框 */
+        .input-box-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: #000;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            padding: 4px 14px;
+            margin-top: 4px;
+            transition: border-color 0.2s;
+        }
+
+        .input-box-wrapper:focus-within {
+            border-color: var(--accent-active);
+            box-shadow: 0 0 12px rgba(88, 166, 255, 0.3);
+        }
+
+        .native-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: right;
+            outline: none;
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            padding: 8px 0;
+        }
+
+        .native-input::-webkit-outer-spin-button,
+        .native-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .native-input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .input-unit-tag {
+            font-size: 1.25rem;
+            color: var(--accent-active);
+            font-weight: 700;
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+
+        .action-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .btn-hide-keyboard {
+            background: var(--num-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-sub);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .btn-hide-keyboard:active {
+            background: var(--num-active);
+            color: var(--text-main);
+        }
+
+        /* 換算結果列表區 */
+        .results-header {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-sub);
+            margin: 8px 4px 6px 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-bottom: 20px;
+        }
+
+        .result-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.15s, border-color 0.15s;
+            cursor: pointer;
+        }
+
+        .result-card:active {
+            background: var(--num-bg);
+            border-color: var(--accent-color);
+        }
+
+        .res-unit-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .res-unit-label {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: var(--accent-active);
+        }
+
+        .res-unit-sub {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .res-val-group {
+            text-align: right;
+        }
+
+        .res-val-main {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            font-family: 'SF Pro Display', -apple-system, monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .res-val-sub {
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-top: 3px;
+        }
+
+        /* Toast 提示 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(47, 129, 247, 0.95);
+            color: white;
+            padding: 10px 22px;
+            border-radius: 25px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(-5px);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="title">⚡ 壓力單位換算器</div>
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="btn-mode-exact" onclick="setMode('exact')">精確值</button>
+            <button class="mode-btn" id="btn-mode-approx" onclick="setMode('approx')">近似值</button>
+        </div>
+    </header>
+
+    <!-- 輸入區 -->
+    <div class="input-section">
+        <div class="section-label">
+            <span>選擇基準單位</span>
+            <span>點擊數值輸入</span>
+        </div>
+        <div class="unit-selector" id="unit-selector">
+            <!-- 由 JS 動態生成單位標籤 -->
+        </div>
+
+        <div class="input-box-wrapper">
+            <input 
+                type="text" 
+                inputmode="decimal" 
+                class="native-input" 
+                id="num-input" 
+                value="100" 
+                autocomplete="off"
+                placeholder="0"
+            >
+            <div class="input-unit-tag" id="current-unit-label">kg/cm²</div>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn-hide-keyboard" onclick="dismissKeyboard()">
+                ▼ 收起鍵盤看全貌
+            </button>
+        </div>
+    </div>
+
+    <div class="results-header">
+        <span>換算結果（點擊可複製）</span>
+        <span id="result-count-tag" style="font-size:0.8rem; color:var(--text-sub);">共 7 個單位</span>
+    </div>
+
+    <!-- 換算結果列表 -->
+    <div class="results-section" id="results-list">
+        <!-- 由 JS 動態渲染換算列表 -->
+    </div>
+
+    <div class="toast" id="toast">已複製到剪貼簿</div>
+
+    <script>
+        const unitsData = [
+            { id: 'Pa',     label: 'Pa',     fullName: '帕斯卡',    paRatio: 1.0,           approxDec: 0 },
+            { id: 'bar',    label: 'bar',    fullName: '巴',        paRatio: 100000.0,      approxDec: 2 },
+            { id: 'kgcm2',  label: 'kg/cm²', fullName: '公斤/平方公分', paRatio: 98066.0,   approxDec: 2 },
+            { id: 'psi',    label: 'psi',    fullName: '磅/平方英吋',   paRatio: 6895.0000015,  approxDec: 1 },
+            { id: 'mmH2O',  label: 'mmH₂O',  fullName: '毫米水柱',   paRatio: 9.8070000000,  approxDec: 0 },
+            { id: 'kPa',    label: 'kPa',    fullName: '千帕',      paRatio: 1000.0,        approxDec: 2 },
+            { id: 'MPa',    label: 'MPa',    fullName: '百萬帕',    paRatio: 1000000.0,     approxDec: 4 }
+        ];
+
+        let currentUnitId = 'kgcm2';
+        let displayMode = 'exact';
+
+        const numInput = document.getElementById('num-input');
+
+        function init() {
+            renderUnitChips();
+            updateUI();
+
+            numInput.addEventListener('input', updateUI);
+
+            numInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    dismissKeyboard();
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.input-section') && !e.target.closest('.result-card')) {
+                    dismissKeyboard();
+                }
+            });
+        }
+
+        function renderUnitChips() {
+            const container = document.getElementById('unit-selector');
+            container.innerHTML = '';
+            unitsData.forEach(u => {
+                const chip = document.createElement('div');
+                chip.className = `unit-chip ${u.id === currentUnitId ? 'active' : ''}`;
+                chip.innerText = u.label;
+                chip.onclick = (e) => {
+                    e.stopPropagation();
+                    selectUnit(u.id);
+                };
+                container.appendChild(chip);
+            });
+            document.getElementById('current-unit-label').innerText = 
+                unitsData.find(u => u.id === currentUnitId).label;
+        }
+
+        function selectUnit(id) {
+            currentUnitId = id;
+            renderUnitChips();
+            updateUI();
+        }
+
+        function setMode(mode) {
+            displayMode = mode;
+            document.getElementById('btn-mode-exact').classList.toggle('active', mode === 'exact');
+            document.getElementById('btn-mode-approx').classList.toggle('active', mode === 'approx');
+            updateUI();
+        }
+
+        function dismissKeyboard() {
+            numInput.blur();
+        }
+
+        function calculateConversions(inputVal, fromUnitId) {
+            const fromUnit = unitsData.find(u => u.id === fromUnitId);
+            const valueInPa = inputVal * fromUnit.paRatio;
+
+            return unitsData.map(u => {
+                const exactVal = valueInPa / u.paRatio;
+                let approxVal;
+                
+                if (u.approxDec === 0) {
+                    approxVal = Math.round(exactVal);
+                } else {
+                    approxVal = Number(exactVal.toFixed(u.approxDec));
+                }
+
+                return {
+                    id: u.id,
+                    label: u.label,
+                    fullName: u.fullName,
+                    exact: exactVal,
+                    approx: approxVal
+                };
+            });
+        }
+
+        function updateUI() {
+            let rawVal = numInput.value;
+            rawVal = rawVal.replace('，', '.').replace(',', '');
+            
+            let numVal = parseFloat(rawVal);
+            if (isNaN(numVal)) numVal = 0;
+
+            const results = calculateConversions(numVal, currentUnitId);
+            const listContainer = document.getElementById('results-list');
+            listContainer.innerHTML = '';
+
+            document.getElementById('result-count-tag').innerText = `共 ${results.length} 個單位`;
+
+            results.forEach(res => {
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                let displayVal = displayMode === 'exact' 
+                    ? formatNumber(res.exact) 
+                    : formatNumber(res.approx);
+
+                let subValText = displayMode === 'exact' 
+                    ? `近似值: ${formatNumber(res.approx)}` 
+                    : `精確值: ${formatNumber(res.exact)}`;
+
+                card.innerHTML = `
+                    <div class="res-unit-group">
+                        <div class="res-unit-label">${res.label}</div>
+                        <div class="res-unit-sub">${res.fullName}</div>
+                    </div>
+                    <div class="res-val-group">
+                        <div class="res-val-main">${displayVal}</div>
+                        <div class="res-val-sub">${subValText}</div>
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    dismissKeyboard();
+                    navigator.clipboard.writeText(displayVal);
+                    showToast(`已複製: ${displayVal} ${res.label}`);
+                };
+
+                listContainer.appendChild(card);
+            });
+        }
+
+        function formatNumber(num) {
+            if (Math.abs(num) >= 1e8 || (Math.abs(num) < 0.0001 && num !== 0)) {
+                return num.toExponential(4);
+            }
+            return String(Number(num.toFixed(6)));
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
